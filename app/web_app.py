@@ -1,12 +1,12 @@
 from pathlib import Path
 import uuid
 
-from fastapi import FastAPI, Form, HTTPException
+from fastapi import FastAPI, Form, HTTPException, UploadFile, File
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from .pipeline import run_pipeline_and_get_text
-from .file_utils import create_resume_docx
+from .file_utils import create_resume_docx, extract_text_from_docx_bytes
 from .diff_utils import make_side_by_side_diff_html
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -24,16 +24,32 @@ def index():
     return (STATIC_DIR / "index.html").read_text()
 
 @app.post("/generate")
-def generate_resume(
+async def generate_resume(
     jd: str = Form(...),
     company: str = Form(...),
-    base_resume: str = Form(...),
+    resume_mode: str = Form("paste"),
+    base_resume: str = Form(""),
+    resume_file: UploadFile | None = File(None),
 ):
+    if resume_mode == "upload":
+        if not resume_file:
+            raise HTTPException(status_code=400, detail="resume_file is required for upload mode")
+        filename = (resume_file.filename or "").lower()
+        if not filename.endswith(".docx"):
+            raise HTTPException(status_code=400, detail="Only .docx files are supported")
+        docx_bytes = await resume_file.read()
+        base_resume_text = extract_text_from_docx_bytes(docx_bytes)
+    else:
+        base_resume_text = (base_resume or "").strip()
+
+    if not base_resume_text:
+        raise HTTPException(status_code=400, detail="Resume content is empty")
+
     resume_text, judgement = run_pipeline_and_get_text(
         jd_text=jd,
-        base_resume=base_resume,
+        base_resume=base_resume_text,
     )
-    diff_html = make_side_by_side_diff_html(base_resume, resume_text)
+    diff_html = make_side_by_side_diff_html(base_resume_text, resume_text)
 
     job_id = str(uuid.uuid4())
 
@@ -44,7 +60,7 @@ def generate_resume(
     SESSIONS[job_id] = {
         "jd": jd,
         "company": company,
-        "base_resume": base_resume,
+        "base_resume": base_resume_text,
         "version": version,
         "files": [docx_path.name],
     }

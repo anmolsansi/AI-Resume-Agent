@@ -14,8 +14,27 @@
     <label>Job Description:</label><br />
     <textarea id="jd" name="jd" rows="10" cols="80" required></textarea><br /><br />
 
-    <label>Base resume text (paste):</label><br />
-    <textarea id="resume" name="resume" rows="10" cols="80" required></textarea><br /><br />
+    <label>Resume input method:</label><br />
+    <label>
+      <input type="radio" name="resume_mode" value="paste" checked />
+      Paste resume text
+    </label>
+    <label style="margin-left: 12px;">
+      <input type="radio" name="resume_mode" value="upload" />
+      Upload DOCX
+    </label>
+    <br /><br />
+
+    <div id="paste-block">
+      <label>Base resume text (paste):</label><br />
+      <textarea id="resume" name="resume" rows="10" cols="80"></textarea><br /><br />
+    </div>
+
+    <div id="upload-block" style="display:none;">
+      <label>Upload resume (.docx only):</label><br />
+      <input type="file" id="resume-docx" name="resume_docx" accept=".docx" />
+      <br /><br />
+    </div>
 
     <button type="submit">Generate</button>
   </form>
@@ -57,6 +76,27 @@
     const redoBtn = document.getElementById("redo-btn");
     const newResumePre = document.getElementById("new-resume-text");
     const diffView = document.getElementById("diff-view");
+    const pasteBlock = document.getElementById("paste-block");
+    const uploadBlock = document.getElementById("upload-block");
+    const resumeTextarea = document.getElementById("resume");
+    const resumeDocxInput = document.getElementById("resume-docx");
+
+    function getResumeMode() {
+      return document.querySelector('input[name="resume_mode"]:checked').value;
+    }
+
+    document.querySelectorAll('input[name="resume_mode"]').forEach((el) => {
+      el.addEventListener("change", () => {
+        const mode = getResumeMode();
+        if (mode === "paste") {
+          pasteBlock.style.display = "block";
+          uploadBlock.style.display = "none";
+        } else {
+          pasteBlock.style.display = "none";
+          uploadBlock.style.display = "block";
+        }
+      });
+    });
 
     function updateResult(data) {
       scoreSpan.textContent = data.score;
@@ -89,12 +129,28 @@
 
       const jd = document.getElementById("jd").value;
       const company = document.getElementById("company").value;
-      const resume = document.getElementById("resume").value;
+      const mode = getResumeMode();
 
       const formData = new FormData();
       formData.append("jd", jd);
       formData.append("company", company);
-      formData.append("base_resume", resume);
+      formData.append("resume_mode", mode);
+
+      if (mode === "paste") {
+        const resumeText = resumeTextarea.value.trim();
+        if (!resumeText) {
+          alert("Please paste your resume text.");
+          return;
+        }
+        formData.append("base_resume", resumeText);
+      } else {
+        const file = resumeDocxInput.files[0];
+        if (!file) {
+          alert("Please upload a .docx file.");
+          return;
+        }
+        formData.append("resume_file", file);
+      }
 
       const resp = await fetch("/generate", {
         method: "POST",

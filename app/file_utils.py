@@ -1,3 +1,4 @@
+import io
 from pathlib import Path
 from docx import Document
 
@@ -26,3 +27,13 @@ def create_resume_docx(company_name: str, resume_text: str, version: int) -> Pat
     doc.save(docx_path)
 
     return docx_path
+
+
+def extract_text_from_docx_bytes(docx_bytes: bytes) -> str:
+    doc = Document(io.BytesIO(docx_bytes))
+    lines = []
+    for p in doc.paragraphs:
+        t = (p.text or "").strip()
+        if t:
+            lines.append(t)
+    return "\n".join(lines)
