@@ -1,6 +1,6 @@
 from .agents import analyze_jd, rewrite_resume, judge_resume
 
-def run_pipeline_and_get_text(jd_text: str, base_resume: str, max_loops: int = 2):
+def run_pipeline_and_get_text(jd_text: str, base_resume: str, max_loops: int = 5):
     jd_analysis = analyze_jd(jd_text)
     current_resume = base_resume
     last_judgement = None

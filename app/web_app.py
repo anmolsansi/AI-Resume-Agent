@@ -33,21 +33,28 @@ def generate_resume(
         base_resume=base_resume,
     )
 
-    docx_path = create_resume_docx(company, resume_text)
-
     job_id = str(uuid.uuid4())
+
+    # version starts at 1 for a new job
+    version = 1
+    docx_path = create_resume_docx(company, resume_text, version)
+
     SESSIONS[job_id] = {
         "jd": jd,
         "company": company,
         "base_resume": base_resume,
+        "version": version,
+        "files": [docx_path.name],
     }
 
     return JSONResponse({
         "job_id": job_id,
+        "version": version,
         "score": judgement.get("score"),
         "summary": judgement.get("summary"),
         "docx_file": docx_path.name,
         "download_url": f"/download/{docx_path.name}",
+        "all_versions": SESSIONS[job_id]["files"],
     })
 
 @app.post("/regenerate/{job_id}")
@@ -63,16 +70,29 @@ def regenerate_resume(job_id: str):
     resume_text, judgement = run_pipeline_and_get_text(
         jd_text=jd,
         base_resume=base_resume,
+        max_loops=3
     )
 
-    docx_path = create_resume_docx(company, resume_text)
+    # initialize session state if missing (for backwards compatibility)
+    session.setdefault("version", 1)
+    session.setdefault("files", [])
+
+    # increment version
+    session["version"] += 1
+    version = session["version"]
+
+    docx_path = create_resume_docx(company, resume_text, version)
+
+    session["files"].append(docx_path.name)
 
     return JSONResponse({
         "job_id": job_id,
+        "version": version,
         "score": judgement.get("score"),
         "summary": judgement.get("summary"),
         "docx_file": docx_path.name,
         "download_url": f"/download/{docx_path.name}",
+        "all_versions": session["files"],
     })
 
 @app.get("/download/{filename}")

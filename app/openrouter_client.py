@@ -88,6 +88,7 @@ class OpenRouterClient:
     def chat(self, model, messages, temperature=0.2, max_tokens=1024):
         print("Model and Message", model, messages)
         last_error = None
+        last_request_exception = None
         logger.info("Starting chat request: model=%s, temperature=%s, max_tokens=%s", model, temperature, max_tokens)
 
         for attempt in range(len(self.keys)):
@@ -118,6 +119,7 @@ class OpenRouterClient:
             except requests.RequestException as exc:
                 logger.exception("RequestException when calling OpenRouter: %s", exc)
                 last_error = str(exc)
+                last_request_exception = exc
                 # mark this key as exhausted for today
                 usage[today][key_name] = self.daily_limit
                 self._save_usage(usage)
@@ -142,4 +144,6 @@ class OpenRouterClient:
             resp.raise_for_status()
 
         logger.error("All keys failed. Last error: %s", last_error)
+        if last_request_exception is not None:
+            raise last_request_exception
         raise RuntimeError(f"All keys failed. Last error: {last_error}")

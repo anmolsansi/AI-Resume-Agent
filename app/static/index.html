@@ -25,7 +25,12 @@
   <div id="result" style="display:none;">
     <p><strong>Score:</strong> <span id="score"></span></p>
     <p><strong>Summary:</strong> <span id="summary"></span></p>
+    <p><strong>Version:</strong> <span id="version"></span></p>
     <p><a id="download-link" href="#" target="_blank">Download DOCX</a></p>
+
+    <p><strong>All versions:</strong></p>
+    <ul id="versions-list"></ul>
+
     <button id="redo-btn">Redo</button>
   </div>
 
@@ -36,8 +41,33 @@
     const resultDiv = document.getElementById("result");
     const scoreSpan = document.getElementById("score");
     const summarySpan = document.getElementById("summary");
+    const versionSpan = document.getElementById("version");
+    const versionsList = document.getElementById("versions-list");
     const downloadLink = document.getElementById("download-link");
     const redoBtn = document.getElementById("redo-btn");
+
+    function updateResult(data) {
+      scoreSpan.textContent = data.score;
+      summarySpan.textContent = data.summary;
+      versionSpan.textContent = data.version;
+      downloadLink.href = data.download_url;
+      downloadLink.textContent = `Download ${data.docx_file}`;
+
+      versionsList.innerHTML = "";
+      if (Array.isArray(data.all_versions)) {
+        for (const filename of data.all_versions) {
+          const li = document.createElement("li");
+          const a = document.createElement("a");
+          a.href = `/download/${filename}`;
+          a.textContent = filename;
+          a.target = "_blank";
+          li.appendChild(a);
+          versionsList.appendChild(li);
+        }
+      }
+
+      resultDiv.style.display = "block";
+    }
 
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
@@ -59,12 +89,7 @@
       const data = await resp.json();
       currentJobId = data.job_id;
 
-      scoreSpan.textContent = data.score;
-      summarySpan.textContent = data.summary;
-      downloadLink.href = data.download_url;
-      downloadLink.textContent = `Download ${data.docx_file}`;
-
-      resultDiv.style.display = "block";
+      updateResult(data);
     });
 
     redoBtn.addEventListener("click", async () => {
@@ -76,10 +101,7 @@
 
       const data = await resp.json();
 
-      scoreSpan.textContent = data.score;
-      summarySpan.textContent = data.summary;
-      downloadLink.href = data.download_url;
-      downloadLink.textContent = `Download ${data.docx_file}`;
+      updateResult(data);
     });
   </script>
 </body>
