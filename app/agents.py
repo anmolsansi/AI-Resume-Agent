@@ -1,4 +1,7 @@
 import json
+import os
+from dotenv import load_dotenv
+load_dotenv()
 from pathlib import Path
 from .local_llm_client import analyze_jd_local
 
@@ -55,30 +58,30 @@ def analyze_jd(jd_text: str) -> str:
 
     return "\n".join(summary_lines)
 
-def analyze_jd_openrouter(jd_text: str) -> str:
-    messages = [
-        {
-            "role": "system",
-            "content": "You analyze job descriptions and extract core requirements."
-        },
-        {
-            "role": "user",
-            "content": (
-                "Analyze this job description. Summarize:\n"
-                "- must-have skills\n"
-                "- nice-to-have skills\n"
-                "- tech stack\n"
-                "- core responsibilities\n"
-                "- important keywords\n\n"
-                f"JD:\n{jd_text}"
-            ),
-        },
-    ]
-    return client.chat(MISTRAL_MODEL, messages, temperature=0.1, max_tokens=700)
+# def analyze_jd_openrouter(jd_text: str) -> str:
+#     messages = [
+#         {
+#             "role": "system",
+#             "content": "You analyze job descriptions and extract core requirements."
+#         },
+#         {
+#             "role": "user",
+#             "content": (
+#                 "Analyze this job description. Summarize:\n"
+#                 "- must-have skills\n"
+#                 "- nice-to-have skills\n"
+#                 "- tech stack\n"
+#                 "- core responsibilities\n"
+#                 "- important keywords\n\n"
+#                 f"JD:\n{jd_text}"
+#             ),
+#         },
+#     ]
+#     return client.chat(MISTRAL_MODEL, messages, temperature=0.1, max_tokens=700)
 
 def rewrite_resume(jd_analysis: str, base_resume: str) -> str:
     style_text = load_style_guide()
-
+    user_template = os.getenv("PROMPT_REWRITE_USER_TEMPLATE")
     messages = [
         {
             "role": "system",
@@ -89,24 +92,17 @@ def rewrite_resume(jd_analysis: str, base_resume: str) -> str:
         },
         {
             "role": "user",
-            "content": (
-                "Here is a resume writing style guide.\n"
-                "It shows the tone and structure I want. "
-                "Only copy the style, not the specific content.\n\n"
-                f"{style_text}\n\n"
-                "Here is the job analysis:\n"
-                f"{jd_analysis}\n\n"
-                "Here is my current resume:\n"
-                f"{base_resume}\n\n"
-                "Rewrite the resume to align with the job and follow the style guide. "
-                "Keep all facts true. Do not copy any exact sentences from the style guide. "
-                "Emphasize relevant skills and impact. Return only the full resume text."
+            "content": user_template.format(
+                style_text=style_text,
+                jd_analysis=jd_analysis,
+                base_resume=base_resume,
             ),
         },
     ]
     return client.chat(MISTRAL_MODEL, messages, temperature=0.3, max_tokens=1400)
 
 def judge_resume(jd_text: str, new_resume: str) -> dict:
+    user_template = os.getenv("PROMPT_JUDGE_TEMPLATE")
     messages = [
         {
             "role": "system",
@@ -114,19 +110,9 @@ def judge_resume(jd_text: str, new_resume: str) -> dict:
         },
         {
             "role": "user",
-            "content": (
-                "Job description:\n"
-                f"{jd_text}\n\n"
-                "Resume:\n"
-                f"{new_resume}\n\n"
-                "Rate how well this resume fits the job on a scale from 1 to 10. "
-                "If the score is below 8, list 3 to 5 specific improvements.\n\n"
-                "Respond in JSON like this:\n"
-                "{\n"
-                '  "score": number,\n'
-                '  "summary": "short text",\n'
-                '  "improvements": ["bullet", "bullet"]\n'
-                "}"
+            "content": user_template.format(
+                jd_text=jd_text,
+                new_resume=new_resume,
             ),
         },
     ]
@@ -135,3 +121,4 @@ def judge_resume(jd_text: str, new_resume: str) -> dict:
         return json.loads(raw)
     except json.JSONDecodeError:
         return {"score": 0, "summary": "Could not parse JSON", "improvements": [raw]}
+    

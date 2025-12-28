@@ -1,6 +1,8 @@
 import json
 from pathlib import Path
-
+import os
+from dotenv import load_dotenv
+load_dotenv()
 import requests
 
 # URL for Ollama running locally
@@ -12,27 +14,12 @@ def analyze_jd_local(jd_text: str) -> dict:
     Ask the local model (via Ollama) to analyze a job description and
     return a structured JSON dictionary.
     """
-
-    prompt = (
-        "You are a job description analyzer.\n"
-        "Read the job description and extract the following information.\n"
-        "Return ONLY valid JSON, no extra text.\n\n"
-        "The JSON format must be exactly:\n"
-        "{\n"
-        '  \"must_have\": [\"skill1\", \"skill2\"],\n'
-        '  \"nice_to_have\": [\"skill\"],\n'
-        '  \"tech_stack\": [\"technology\"],\n'
-        '  \"responsibilities\": [\"sentence\"],\n'
-        '  \"keywords\": [\"word\"]\n'
-        "}\n\n"
-        f"Job description:\n{jd_text}"
-    )
-
+    user_template = os.getenv("PROMPT_ANALYZE_JD_TEMPLATE")
     body = {
         "model": LOCAL_MODEL_NAME,
         "messages": [
             {"role": "system", "content": "You output only strict JSON."},
-            {"role": "user", "content": prompt},
+            {"role": "user", "content": user_template.format(jd_text=jd_text)},
         ],
         "stream": False,
     }
