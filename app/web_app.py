@@ -7,6 +7,7 @@ from fastapi.staticfiles import StaticFiles
 
 from .pipeline import run_pipeline_and_get_text
 from .file_utils import create_resume_docx
+from .diff_utils import make_side_by_side_diff_html
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 OUTPUT_DIR = BASE_DIR / "output"
@@ -32,6 +33,7 @@ def generate_resume(
         jd_text=jd,
         base_resume=base_resume,
     )
+    diff_html = make_side_by_side_diff_html(base_resume, resume_text)
 
     job_id = str(uuid.uuid4())
 
@@ -55,6 +57,8 @@ def generate_resume(
         "docx_file": docx_path.name,
         "download_url": f"/download/{docx_path.name}",
         "all_versions": SESSIONS[job_id]["files"],
+        "new_resume_text": resume_text,
+        "diff_html": diff_html,
     })
 
 @app.post("/regenerate/{job_id}")
@@ -72,6 +76,7 @@ def regenerate_resume(job_id: str):
         base_resume=base_resume,
         max_loops=3
     )
+    diff_html = make_side_by_side_diff_html(base_resume, resume_text)
 
     # initialize session state if missing (for backwards compatibility)
     session.setdefault("version", 1)
@@ -93,6 +98,8 @@ def regenerate_resume(job_id: str):
         "docx_file": docx_path.name,
         "download_url": f"/download/{docx_path.name}",
         "all_versions": session["files"],
+        "new_resume_text": resume_text,
+        "diff_html": diff_html,
     })
 
 @app.get("/download/{filename}")

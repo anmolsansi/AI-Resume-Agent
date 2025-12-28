@@ -31,6 +31,16 @@
     <p><strong>All versions:</strong></p>
     <ul id="versions-list"></ul>
 
+    <hr />
+
+    <h2>Generated Resume (Text)</h2>
+    <pre id="new-resume-text" style="white-space: pre-wrap; border: 1px solid #444; padding: 10px;"></pre>
+
+    <hr />
+
+    <h2>What Changed (Side-by-Side)</h2>
+    <div id="diff-view" style="overflow-x: auto;"></div>
+
     <button id="redo-btn">Redo</button>
   </div>
 
@@ -45,6 +55,8 @@
     const versionsList = document.getElementById("versions-list");
     const downloadLink = document.getElementById("download-link");
     const redoBtn = document.getElementById("redo-btn");
+    const newResumePre = document.getElementById("new-resume-text");
+    const diffView = document.getElementById("diff-view");
 
     function updateResult(data) {
       scoreSpan.textContent = data.score;
@@ -65,6 +77,9 @@
           versionsList.appendChild(li);
         }
       }
+
+      newResumePre.textContent = data.new_resume_text || "";
+      diffView.innerHTML = data.diff_html || "";
 
       resultDiv.style.display = "block";
     }
