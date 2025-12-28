@@ -1,0 +1,33 @@
+# Environment files
+.env
+.env.*
+.venv/
+venv/
+
+# Python cache / build artifacts
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+build/
+dist/
+*.egg-info/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Application data
+data/
+output/
+
+# Logs / databases
+*.log
+*.sqlite3
+
+# IDE / OS files
+.idea/
+.vscode/
+.DS_Store

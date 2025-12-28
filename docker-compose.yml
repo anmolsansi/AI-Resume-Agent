@@ -1,0 +1,14 @@
+version: "3.9"
+
+services:
+  resume-agent:
+    build: .
+    container_name: resume-agent
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+      - ./output:/app/output
+      - ./.env:/app/.env
+    environment:
+      - PYTHONUNBUFFERED=1
