@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Resume Agent</title>
+</head>
+<body>
+  <h1>Resume Generator</h1>
+
+  <form id="generate-form">
+    <label>Company name:</label><br />
+    <input type="text" id="company" name="company" required /><br /><br />
+
+    <label>Job Description:</label><br />
+    <textarea id="jd" name="jd" rows="10" cols="80" required></textarea><br /><br />
+
+    <label>Base resume text (paste):</label><br />
+    <textarea id="resume" name="resume" rows="10" cols="80" required></textarea><br /><br />
+
+    <button type="submit">Generate</button>
+  </form>
+
+  <hr />
+
+  <div id="result" style="display:none;">
+    <p><strong>Score:</strong> <span id="score"></span></p>
+    <p><strong>Summary:</strong> <span id="summary"></span></p>
+    <p><a id="download-link" href="#" target="_blank">Download DOCX</a></p>
+    <button id="redo-btn">Redo</button>
+  </div>
+
+  <script>
+    let currentJobId = null;
+
+    const form = document.getElementById("generate-form");
+    const resultDiv = document.getElementById("result");
+    const scoreSpan = document.getElementById("score");
+    const summarySpan = document.getElementById("summary");
+    const downloadLink = document.getElementById("download-link");
+    const redoBtn = document.getElementById("redo-btn");
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const jd = document.getElementById("jd").value;
+      const company = document.getElementById("company").value;
+      const resume = document.getElementById("resume").value;
+
+      const formData = new FormData();
+      formData.append("jd", jd);
+      formData.append("company", company);
+      formData.append("base_resume", resume);
+
+      const resp = await fetch("/generate", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await resp.json();
+      currentJobId = data.job_id;
+
+      scoreSpan.textContent = data.score;
+      summarySpan.textContent = data.summary;
+      downloadLink.href = data.download_url;
+      downloadLink.textContent = `Download ${data.docx_file}`;
+
+      resultDiv.style.display = "block";
+    });
+
+    redoBtn.addEventListener("click", async () => {
+      if (!currentJobId) return;
+
+      const resp = await fetch(`/regenerate/${currentJobId}`, {
+        method: "POST",
+      });
+
+      const data = await resp.json();
+
+      scoreSpan.textContent = data.score;
+      summarySpan.textContent = data.summary;
+      downloadLink.href = data.download_url;
+      downloadLink.textContent = `Download ${data.docx_file}`;
+    });
+  </script>
+</body>
+</html>
