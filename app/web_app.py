@@ -1,6 +1,6 @@
 from pathlib import Path
 import uuid
-
+from typing import Union
 from fastapi import FastAPI, Form, HTTPException, UploadFile, File
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -29,7 +29,7 @@ async def generate_resume(
     company: str = Form(...),
     resume_mode: str = Form("paste"),
     base_resume: str = Form(""),
-    resume_file: UploadFile | None = File(None),
+    resume_file: Union[UploadFile, None] = File(None),
 ):
     if resume_mode == "upload":
         if not resume_file:
