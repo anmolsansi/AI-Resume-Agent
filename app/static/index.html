@@ -44,6 +44,7 @@
   <div id="result" style="display:none;">
     <p><strong>Score:</strong> <span id="score"></span></p>
     <p><strong>Summary:</strong> <span id="summary"></span></p>
+    <p><strong>Resume source:</strong> <span id="resume-source"></span></p>
     <p><strong>Version:</strong> <span id="version"></span></p>
     <p><a id="download-link" href="#" target="_blank">Download DOCX</a></p>
 
@@ -70,6 +71,7 @@
     const resultDiv = document.getElementById("result");
     const scoreSpan = document.getElementById("score");
     const summarySpan = document.getElementById("summary");
+    const resumeSourceSpan = document.getElementById("resume-source");
     const versionSpan = document.getElementById("version");
     const versionsList = document.getElementById("versions-list");
     const downloadLink = document.getElementById("download-link");
@@ -102,6 +104,7 @@
       scoreSpan.textContent = data.score;
       summarySpan.textContent = data.summary;
       versionSpan.textContent = data.version;
+      resumeSourceSpan.textContent = data.resume_source || "";
       downloadLink.href = data.download_url;
       downloadLink.textContent = `Download ${data.docx_file}`;
 

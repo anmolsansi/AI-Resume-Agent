@@ -6,7 +6,11 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from .pipeline import run_pipeline_and_get_text
-from .file_utils import create_resume_docx, extract_text_from_docx_bytes
+from .file_utils import (
+    create_resume_docx,
+    extract_text_from_docx_bytes,
+    load_master_resume_text,
+)
 from .diff_utils import make_side_by_side_diff_html
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -31,19 +35,28 @@ async def generate_resume(
     base_resume: str = Form(""),
     resume_file: Union[UploadFile, None] = File(None),
 ):
+    resume_source = "paste"
+    base_resume_text = ""
+
     if resume_mode == "upload":
-        if not resume_file:
-            raise HTTPException(status_code=400, detail="resume_file is required for upload mode")
-        filename = (resume_file.filename or "").lower()
-        if not filename.endswith(".docx"):
-            raise HTTPException(status_code=400, detail="Only .docx files are supported")
-        docx_bytes = await resume_file.read()
-        base_resume_text = extract_text_from_docx_bytes(docx_bytes)
+        resume_source = "upload"
+        if resume_file:
+            filename = (resume_file.filename or "").lower()
+            if not filename.endswith(".docx"):
+                raise HTTPException(status_code=400, detail="Only .docx files are supported")
+            docx_bytes = await resume_file.read()
+            base_resume_text = extract_text_from_docx_bytes(docx_bytes)
+        else:
+            resume_source = "master"
+            base_resume_text = load_master_resume_text()
     else:
         base_resume_text = (base_resume or "").strip()
+        if not base_resume_text:
+            resume_source = "master"
+            base_resume_text = load_master_resume_text()
 
     if not base_resume_text:
-        raise HTTPException(status_code=400, detail="Resume content is empty")
+        raise HTTPException(status_code=400, detail="Resume content is empty (including master resume)")
 
     resume_text, judgement = run_pipeline_and_get_text(
         jd_text=jd,
@@ -68,6 +81,7 @@ async def generate_resume(
     return JSONResponse({
         "job_id": job_id,
         "version": version,
+        "resume_source": resume_source,
         "score": judgement.get("score"),
         "summary": judgement.get("summary"),
         "docx_file": docx_path.name,
