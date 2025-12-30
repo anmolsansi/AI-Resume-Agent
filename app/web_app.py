@@ -1,6 +1,6 @@
 from pathlib import Path
 import uuid
-from typing import Union
+from typing import Dict, List, Union
 from fastapi import FastAPI, Form, HTTPException, UploadFile, File
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -12,6 +12,7 @@ from .file_utils import (
     load_master_resume_text,
 )
 from .diff_utils import make_side_by_side_diff_html
+from .projects_utils import load_projects
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 OUTPUT_DIR = BASE_DIR / "output"
@@ -27,10 +28,28 @@ SESSIONS = {}
 def index():
     return (STATIC_DIR / "index.html").read_text()
 
+
+@app.get("/projects")
+def get_projects():
+    projects = load_projects()
+    return {"count": len(projects), "projects": projects}
+
+
+def _project_display_names(projects):
+    names: List[str] = []
+    for project in projects:
+        if not project:
+            continue
+        name = project.get("name") or project.get("id")
+        if name:
+            names.append(name)
+    return names
+
 @app.post("/generate")
 async def generate_resume(
     jd: str = Form(...),
     company: str = Form(...),
+    project_count: int = Form(3),
     resume_mode: str = Form("paste"),
     base_resume: str = Form(""),
     resume_file: Union[UploadFile, None] = File(None),
@@ -58,9 +77,12 @@ async def generate_resume(
     if not base_resume_text:
         raise HTTPException(status_code=400, detail="Resume content is empty (including master resume)")
 
-    resume_text, judgement = run_pipeline_and_get_text(
+    projects = load_projects()
+    resume_text, judgement, pipeline_state = run_pipeline_and_get_text(
         jd_text=jd,
         base_resume=base_resume_text,
+        project_count=project_count,
+        projects=projects,
     )
     diff_html = make_side_by_side_diff_html(base_resume_text, resume_text)
 
@@ -70,10 +92,18 @@ async def generate_resume(
     version = 1
     docx_path = create_resume_docx(company, resume_text, version)
 
+    selected_project_ids = pipeline_state.get("selected_project_ids", [])
+    selected_projects_detail = pipeline_state.get("selected_projects", [])
+    selected_project_names = _project_display_names(selected_projects_detail)
+
     SESSIONS[job_id] = {
         "jd": jd,
         "company": company,
         "base_resume": base_resume_text,
+        "jd_analysis": pipeline_state.get("jd_analysis", ""),
+        "selected_project_ids": selected_project_ids,
+        "resume_source": resume_source,
+        "project_count": project_count,
         "version": version,
         "files": [docx_path.name],
     }
@@ -81,6 +111,8 @@ async def generate_resume(
     response_payload = {
         "job_id": job_id,
         "version": version,
+        "resume_source": resume_source,
+        "project_count": project_count,
         "score": judgement.get("score"),
         "summary": judgement.get("summary"),
         "docx_file": docx_path.name,
@@ -88,6 +120,7 @@ async def generate_resume(
         "all_versions": SESSIONS[job_id]["files"],
         "new_resume_text": resume_text,
         "diff_html": diff_html,
+        "selected_projects": selected_project_names,
     }
     print("judgement-----", judgement)
     print("response_payload-----")
@@ -103,11 +136,21 @@ def regenerate_resume(job_id: str):
     jd = session["jd"]
     company = session["company"]
     base_resume = session["base_resume"]
+    project_count = session.get("project_count", 3)
+    resume_source = session.get("resume_source", "redo")
+    previous_state = {
+        "jd_analysis": session.get("jd_analysis"),
+        "selected_project_ids": session.get("selected_project_ids"),
+    }
+    projects = load_projects()
 
-    resume_text, judgement = run_pipeline_and_get_text(
+    resume_text, judgement, pipeline_state = run_pipeline_and_get_text(
         jd_text=jd,
         base_resume=base_resume,
-        max_loops=3
+        project_count=project_count,
+        projects=projects,
+        previous_state=previous_state,
+        max_loops=3,
     )
     diff_html = make_side_by_side_diff_html(base_resume, resume_text)
 
@@ -121,11 +164,19 @@ def regenerate_resume(job_id: str):
 
     docx_path = create_resume_docx(company, resume_text, version)
 
+    selected_project_ids = pipeline_state.get("selected_project_ids", [])
+    selected_projects_detail = pipeline_state.get("selected_projects", [])
+    selected_project_names = _project_display_names(selected_projects_detail)
+
     session["files"].append(docx_path.name)
+    session["jd_analysis"] = pipeline_state.get("jd_analysis", session.get("jd_analysis", ""))
+    session["selected_project_ids"] = selected_project_ids
 
     response_payload = {
         "job_id": job_id,
         "version": version,
+        "resume_source": resume_source,
+        "project_count": project_count,
         "score": judgement.get("score"),
         "summary": judgement.get("summary"),
         "docx_file": docx_path.name,
@@ -133,6 +184,7 @@ def regenerate_resume(job_id: str):
         "all_versions": session["files"],
         "new_resume_text": resume_text,
         "diff_html": diff_html,
+        "selected_projects": selected_project_names,
     }
     print("judgement-----", judgement)
     print("response_payload-----")

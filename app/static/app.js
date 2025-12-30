@@ -6,7 +6,9 @@ const scoreSpan = document.getElementById("score");
 const summarySpan = document.getElementById("summary");
 const resumeSourceSpan = document.getElementById("resume-source");
 const versionSpan = document.getElementById("version");
+const projectCountDisplay = document.getElementById("project-count-display");
 const versionsList = document.getElementById("versions-list");
+const selectedProjectsList = document.getElementById("selected-projects-list");
 const downloadLink = document.getElementById("download-link");
 const redoBtn = document.getElementById("redo-btn");
 const newResumePre = document.getElementById("new-resume-text");
@@ -41,6 +43,7 @@ function updateResult(data) {
   scoreSpan.textContent = data.score;
   summarySpan.textContent = data.summary;
   versionSpan.textContent = data.version;
+  projectCountDisplay.textContent = data.project_count ?? "";
   resumeSourceSpan.textContent = data.resume_source || "";
   downloadLink.href = data.download_url;
   downloadLink.textContent = `Download ${data.docx_file}`;
@@ -55,6 +58,15 @@ function updateResult(data) {
       a.target = "_blank";
       li.appendChild(a);
       versionsList.appendChild(li);
+    }
+  }
+
+  selectedProjectsList.innerHTML = "";
+  if (Array.isArray(data.selected_projects)) {
+    for (const name of data.selected_projects) {
+      const li = document.createElement("li");
+      li.textContent = name;
+      selectedProjectsList.appendChild(li);
     }
   }
 
@@ -84,11 +96,13 @@ form.addEventListener("submit", async (e) => {
 
   const jd = document.getElementById("jd").value;
   const company = document.getElementById("company").value;
+  const projectCount = document.getElementById("project-count").value;
   const mode = getResumeMode();
 
   const formData = new FormData();
   formData.append("jd", jd);
   formData.append("company", company);
+  formData.append("project_count", projectCount);
   formData.append("resume_mode", mode);
 
   if (mode === "paste") {
