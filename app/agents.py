@@ -1,5 +1,6 @@
 import json
 import os
+import re
 from dotenv import load_dotenv
 load_dotenv()
 from pathlib import Path
@@ -14,6 +15,15 @@ GROK_MODEL = "mistralai/mistral-7b-instruct:free"#"x-ai/grok-4.1-fast:free"
 
 BASE_DIR = Path(__file__).resolve().parent
 STYLE_GUIDE_PATH = BASE_DIR / "style_guide.md"
+FENCED_BLOCK_RE = re.compile(r"^```(?:[\w-]+)?\s*([\s\S]*?)\s*```$", re.DOTALL)
+
+
+def _strip_markdown_fences(content: str) -> str:
+    stripped = content.strip()
+    match = FENCED_BLOCK_RE.match(stripped)
+    if match:
+        return match.group(1).strip()
+    return stripped
 
 def load_style_guide() -> str:
     if STYLE_GUIDE_PATH.exists():
@@ -99,7 +109,8 @@ def rewrite_resume(jd_analysis: str, base_resume: str) -> str:
             ),
         },
     ]
-    return client.chat(MISTRAL_MODEL, messages, temperature=0.3, max_tokens=1400)
+    raw = client.chat(MISTRAL_MODEL, messages, temperature=0.3)
+    return raw
 
 def judge_resume(jd_text: str, new_resume: str) -> dict:
     user_template = os.getenv("PROMPT_JUDGE_TEMPLATE")
@@ -117,8 +128,8 @@ def judge_resume(jd_text: str, new_resume: str) -> dict:
         },
     ]
     raw = client.chat(GROK_MODEL, messages, temperature=0.1, max_tokens=600)
+    clean = _strip_markdown_fences(raw)
     try:
-        return json.loads(raw)
+        return json.loads(clean)
     except json.JSONDecodeError:
         return {"score": 0, "summary": "Could not parse JSON", "improvements": [raw]}
-    

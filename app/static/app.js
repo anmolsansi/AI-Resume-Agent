@@ -15,6 +15,9 @@ const pasteBlock = document.getElementById("paste-block");
 const uploadBlock = document.getElementById("upload-block");
 const resumeTextarea = document.getElementById("resume");
 const resumeDocxInput = document.getElementById("resume-docx");
+const loader = document.getElementById("loader");
+const loaderText = document.getElementById("loader-text");
+const generateBtn = document.getElementById("generate-btn");
 
 function getResumeMode() {
   return document.querySelector('input[name="resume_mode"]:checked').value;
@@ -34,6 +37,7 @@ document.querySelectorAll('input[name="resume_mode"]').forEach((el) => {
 });
 
 function updateResult(data) {
+  console.log("Update result:", data);
   scoreSpan.textContent = data.score;
   summarySpan.textContent = data.summary;
   versionSpan.textContent = data.version;
@@ -60,6 +64,21 @@ function updateResult(data) {
   resultDiv.style.display = "block";
 }
 
+function setLoading(isLoading, message = "Working...") {
+  if (generateBtn) {
+    generateBtn.disabled = isLoading;
+  }
+  if (redoBtn) {
+    redoBtn.disabled = isLoading;
+  }
+  if (loader) {
+    loader.style.display = isLoading ? "block" : "none";
+    if (isLoading && loaderText) {
+      loaderText.textContent = message;
+    }
+  }
+}
+
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
 
@@ -82,25 +101,51 @@ form.addEventListener("submit", async (e) => {
     }
   }
 
-  const resp = await fetch("/generate", {
-    method: "POST",
-    body: formData,
-  });
+  try {
+    setLoading(true, "Generating resume...");
+    const resp = await fetch("/generate", {
+      method: "POST",
+      body: formData,
+    });
 
-  const data = await resp.json();
-  currentJobId = data.job_id;
+    if (!resp.ok) {
+      const errorText = await resp.text();
+      alert(`Failed to generate resume: ${errorText}`);
+      return;
+    }
 
-  updateResult(data);
+    const data = await resp.json();
+    currentJobId = data.job_id;
+    updateResult(data);
+  } catch (err) {
+    console.error(err);
+    alert("An unexpected error occurred while generating the resume.");
+  } finally {
+    setLoading(false);
+  }
 });
 
 redoBtn.addEventListener("click", async () => {
   if (!currentJobId) return;
 
-  const resp = await fetch(`/regenerate/${currentJobId}`, {
-    method: "POST",
-  });
+  try {
+    setLoading(true, "Regenerating resume...");
+    const resp = await fetch(`/regenerate/${currentJobId}`, {
+      method: "POST",
+    });
 
-  const data = await resp.json();
+    if (!resp.ok) {
+      const errorText = await resp.text();
+      alert(`Failed to regenerate resume: ${errorText}`);
+      return;
+    }
 
-  updateResult(data);
+    const data = await resp.json();
+    updateResult(data);
+  } catch (err) {
+    console.error(err);
+    alert("An unexpected error occurred while regenerating the resume.");
+  } finally {
+    setLoading(false);
+  }
 });

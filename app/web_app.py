@@ -78,10 +78,9 @@ async def generate_resume(
         "files": [docx_path.name],
     }
 
-    return JSONResponse({
+    response_payload = {
         "job_id": job_id,
         "version": version,
-        "resume_source": resume_source,
         "score": judgement.get("score"),
         "summary": judgement.get("summary"),
         "docx_file": docx_path.name,
@@ -89,7 +88,11 @@ async def generate_resume(
         "all_versions": SESSIONS[job_id]["files"],
         "new_resume_text": resume_text,
         "diff_html": diff_html,
-    })
+    }
+    print("judgement-----", judgement)
+    print("response_payload-----")
+    print(JSONResponse(response_payload))
+    return JSONResponse(response_payload)
 
 @app.post("/regenerate/{job_id}")
 def regenerate_resume(job_id: str):
@@ -120,7 +123,7 @@ def regenerate_resume(job_id: str):
 
     session["files"].append(docx_path.name)
 
-    return JSONResponse({
+    response_payload = {
         "job_id": job_id,
         "version": version,
         "score": judgement.get("score"),
@@ -130,7 +133,11 @@ def regenerate_resume(job_id: str):
         "all_versions": session["files"],
         "new_resume_text": resume_text,
         "diff_html": diff_html,
-    })
+    }
+    print("judgement-----", judgement)
+    print("response_payload-----")
+    print(JSONResponse(response_payload))
+    return JSONResponse(response_payload)
 
 @app.get("/download/{filename}")
 def download_file(filename: str):
