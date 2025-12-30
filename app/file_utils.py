@@ -1,8 +1,10 @@
+import io
 from pathlib import Path
 from docx import Document
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 OUTPUT_DIR = BASE_DIR / "output"
+MASTER_RESUME_PATH = BASE_DIR / "app" / "master_resume.docx"
 
 
 def _safe_company(company_name: str) -> str:
@@ -26,3 +28,32 @@ def create_resume_docx(company_name: str, resume_text: str, version: int) -> Pat
     doc.save(docx_path)
 
     return docx_path
+
+
+def extract_text_from_docx_bytes(docx_bytes: bytes) -> str:
+    doc = Document(io.BytesIO(docx_bytes))
+    lines = []
+    for p in doc.paragraphs:
+        t = (p.text or "").strip()
+        if t:
+            lines.append(t)
+    return "\n".join(lines)
+
+
+def load_master_resume_text() -> str:
+    """
+    Loads the master resume from app/master_resume.docx and returns plain text.
+    Raises FileNotFoundError if the file doesn't exist.
+    """
+    if not MASTER_RESUME_PATH.exists():
+        raise FileNotFoundError(
+            f"Master resume not found at {MASTER_RESUME_PATH}. "
+            "Create app/master_resume.docx"
+        )
+    doc = Document(str(MASTER_RESUME_PATH))
+    lines = []
+    for p in doc.paragraphs:
+        t = (p.text or "").strip()
+        if t:
+            lines.append(t)
+    return "\n".join(lines)

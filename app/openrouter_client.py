@@ -24,6 +24,14 @@ class OpenRouterClient:
             "OPENROUTER_KEY_1",
             "OPENROUTER_KEY_2",
             "OPENROUTER_KEY_3",
+            "OPENROUTER_KEY_4",
+            "OPENROUTER_KEY_5",
+            "OPENROUTER_KEY_6",
+            "OPENROUTER_KEY_7",
+            "OPENROUTER_KEY_8",
+            "OPENROUTER_KEY_9",
+            "OPENROUTER_KEY_10",
+            "OPENROUTER_KEY_11",
         ]
         self.daily_limit = int(os.getenv("OPENROUTER_DAILY_CALL_LIMIT", "6"))
         logger.error("Daily call limit set to %s", self.daily_limit)
@@ -67,7 +75,6 @@ class OpenRouterClient:
             key_value = os.getenv(key_name)
             if not key_value:
                 logger.error("Env var %s not set, skipping", key_name)
-                print(key_name)
                 continue
 
             used = usage[today].get(key_name, 0)
@@ -86,7 +93,6 @@ class OpenRouterClient:
         self._save_usage(usage)
 
     def chat(self, model, messages, temperature=0.2, max_tokens=1024):
-        print("Model and Message", model, messages)
         last_error = None
         last_request_exception = None
         logger.info("Starting chat request: model=%s, temperature=%s, max_tokens=%s", model, temperature, max_tokens)
@@ -130,7 +136,6 @@ class OpenRouterClient:
             if resp.status_code == 200:
                 self._record_call(usage, today, key_name)
                 data = resp.json()
-                print(data)
                 logger.info("Chat request succeeded with key %s", key_name)
                 return data["choices"][0]["message"]["content"]
 

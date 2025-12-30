@@ -14,10 +14,41 @@
     <label>Job Description:</label><br />
     <textarea id="jd" name="jd" rows="10" cols="80" required></textarea><br /><br />
 
-    <label>Base resume text (paste):</label><br />
-    <textarea id="resume" name="resume" rows="10" cols="80" required></textarea><br /><br />
+    <label>How many projects to include?</label><br />
+    <select id="project-count" name="project_count">
+      <option value="2">2</option>
+      <option value="3" selected>3</option>
+      <option value="4">4</option>
+      <option value="5">5</option>
+    </select>
+    <br /><br />
 
-    <button type="submit">Generate</button>
+    <label>Resume input method:</label><br />
+    <label>
+      <input type="radio" name="resume_mode" value="paste" checked />
+      Paste resume text
+    </label>
+    <label style="margin-left: 12px;">
+      <input type="radio" name="resume_mode" value="upload" />
+      Upload DOCX
+    </label>
+    <br /><br />
+
+    <div id="paste-block">
+      <label>Base resume text (paste):</label><br />
+      <textarea id="resume" name="resume" rows="10" cols="80"></textarea><br /><br />
+    </div>
+
+    <div id="upload-block" style="display:none;">
+      <label>Upload resume (.docx only):</label><br />
+      <input type="file" id="resume-docx" name="resume_docx" accept=".docx" />
+      <br /><br />
+    </div>
+
+    <button type="submit" id="generate-btn">Generate</button>
+    <div id="loader" style="display:none; margin-top:10px;">
+      <span id="loader-text">Working...</span>
+    </div>
   </form>
 
   <hr />
@@ -25,84 +56,30 @@
   <div id="result" style="display:none;">
     <p><strong>Score:</strong> <span id="score"></span></p>
     <p><strong>Summary:</strong> <span id="summary"></span></p>
+    <p><strong>Resume source:</strong> <span id="resume-source"></span></p>
     <p><strong>Version:</strong> <span id="version"></span></p>
+    <p><strong>Project count:</strong> <span id="project-count-display"></span></p>
     <p><a id="download-link" href="#" target="_blank">Download DOCX</a></p>
 
     <p><strong>All versions:</strong></p>
     <ul id="versions-list"></ul>
 
+    <p><strong>Selected projects:</strong></p>
+    <ul id="selected-projects-list"></ul>
+
+    <hr />
+
+    <h2>Generated Resume (Text)</h2>
+    <pre id="new-resume-text" style="white-space: pre-wrap; border: 1px solid #444; padding: 10px;"></pre>
+
+    <hr />
+
+    <h2>What Changed (Side-by-Side)</h2>
+    <div id="diff-view" style="overflow-x: auto;"></div>
+
     <button id="redo-btn">Redo</button>
   </div>
 
-  <script>
-    let currentJobId = null;
-
-    const form = document.getElementById("generate-form");
-    const resultDiv = document.getElementById("result");
-    const scoreSpan = document.getElementById("score");
-    const summarySpan = document.getElementById("summary");
-    const versionSpan = document.getElementById("version");
-    const versionsList = document.getElementById("versions-list");
-    const downloadLink = document.getElementById("download-link");
-    const redoBtn = document.getElementById("redo-btn");
-
-    function updateResult(data) {
-      scoreSpan.textContent = data.score;
-      summarySpan.textContent = data.summary;
-      versionSpan.textContent = data.version;
-      downloadLink.href = data.download_url;
-      downloadLink.textContent = `Download ${data.docx_file}`;
-
-      versionsList.innerHTML = "";
-      if (Array.isArray(data.all_versions)) {
-        for (const filename of data.all_versions) {
-          const li = document.createElement("li");
-          const a = document.createElement("a");
-          a.href = `/download/${filename}`;
-          a.textContent = filename;
-          a.target = "_blank";
-          li.appendChild(a);
-          versionsList.appendChild(li);
-        }
-      }
-
-      resultDiv.style.display = "block";
-    }
-
-    form.addEventListener("submit", async (e) => {
-      e.preventDefault();
-
-      const jd = document.getElementById("jd").value;
-      const company = document.getElementById("company").value;
-      const resume = document.getElementById("resume").value;
-
-      const formData = new FormData();
-      formData.append("jd", jd);
-      formData.append("company", company);
-      formData.append("base_resume", resume);
-
-      const resp = await fetch("/generate", {
-        method: "POST",
-        body: formData,
-      });
-
-      const data = await resp.json();
-      currentJobId = data.job_id;
-
-      updateResult(data);
-    });
-
-    redoBtn.addEventListener("click", async () => {
-      if (!currentJobId) return;
-
-      const resp = await fetch(`/regenerate/${currentJobId}`, {
-        method: "POST",
-      });
-
-      const data = await resp.json();
-
-      updateResult(data);
-    });
-  </script>
+  <script src="/static/app.js"></script>
 </body>
 </html>
