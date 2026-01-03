@@ -1,3 +1,4 @@
+import json
 from typing import Any, Dict, List, Optional, Tuple
 
 from .agents import (
@@ -95,9 +96,10 @@ def run_pipeline_and_get_text(
 
         judgement = judge_resume(
             jd_text=jd_text,
-            new_resume=improved,
+            new_resume=improved["upgradedResume"],
             selected_projects=selected_projects,
             project_count=project_count,
+            previous_agent_output=json.dumps(improved)
         )
 
         print("Judgement--pipeline.py:    ",judgement)
@@ -111,14 +113,14 @@ def run_pipeline_and_get_text(
                 "selected_project_ids": [p.get("id") for p in selected_projects if p.get("id")],
                 "selected_projects": selected_projects,
             }
-            return improved, judgement, state
+            return improved["upgradedResume"], judgement, state
 
         improvements = judgement.get("improvements", []) or []
 
         if project_issue:
             selection_feedback = judgement.get("summary", "")
             if improvements:
-                selection_feedback += "\n" + "\n".join(improvements)
+                selection_feedback += "\n" + "\n" + json.dumps(improvements)
             selection_result = select_projects(jd_analysis, project_count, projects, feedback=selection_feedback)
             selected_project_ids = selection_result.get("selected_project_ids", [])
             selected_projects = _filter_projects(lookup, selected_project_ids, project_count)
@@ -133,7 +135,7 @@ def run_pipeline_and_get_text(
         if improvements:
             formatted = "\n".join(f"- {imp}" for imp in improvements)
             feedback_notes = (feedback_notes + "\n" + formatted).strip()
-        current_resume = improved
+        current_resume = improved["upgradedResume"]
 
     fallback_state = {
         "jd_analysis": jd_analysis,

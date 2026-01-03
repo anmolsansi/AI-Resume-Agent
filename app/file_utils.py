@@ -16,18 +16,22 @@ def create_resume_docx(company_name: str, resume_text: str, version: int) -> Pat
     Creates a versioned resume file:
       Anmol_Sansi_<Company>_v<version>.docx
     """
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    try:
+        OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-    safe_company = _safe_company(company_name)
-    filename = f"Anmol_Sansi_{safe_company}_v{version}.docx"
-    docx_path = OUTPUT_DIR / filename
+        safe_company = _safe_company(company_name)
+        filename = f"Anmol_Sansi_{safe_company}_v{version}.docx"
+        docx_path = OUTPUT_DIR / filename
 
-    doc = Document()
-    for line in resume_text.split("\n"):
-        doc.add_paragraph(line)
-    doc.save(docx_path)
+        doc = Document()
+        for line in str(resume_text).split("\n"):
+            doc.add_paragraph(line)
+        doc.save(docx_path)
 
-    return docx_path
+        return docx_path
+    except Exception as e:
+        print(e)
+
 
 
 def extract_text_from_docx_bytes(docx_bytes: bytes) -> str:

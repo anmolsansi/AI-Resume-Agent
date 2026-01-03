@@ -8,7 +8,7 @@ def make_side_by_side_diff_html(base_text: str, new_text: str) -> str:
     Safe to inject into the page as HTML.
     """
     base_lines = (base_text or "").splitlines()
-    new_lines = (new_text or "").splitlines()
+    new_lines = (str(new_text) or "").splitlines()
 
     # HtmlDiff generates a full HTML table; we return just the table markup.
     diff = HtmlDiff(wrapcolumn=80).make_table(

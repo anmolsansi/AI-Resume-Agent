@@ -92,7 +92,9 @@ def _fallback_to_openrouter(jd_text: str) -> Dict[str, List[str]]:
             temperature=0.1,
             max_tokens=700,
         )
-        parsed = json.loads(_strip_markdown_fences(content))
+        clean = _strip_markdown_fences(content)
+        clean = clean.replace('\r', '').replace('\t', ' ')
+        parsed = json.loads(clean)
     except (json.JSONDecodeError, requests.RequestException, RuntimeError):
         return _empty_analysis()
 
@@ -106,7 +108,7 @@ def analyze_jd_local(jd_text: str) -> Dict[str, List[str]]:
     return a structured JSON dictionary. Retries with a stricter prompt and
     falls back to OpenRouter if validation fails.
     """
-    user_template = os.getenv("PROMPT_ANALYZE_JD_TEMPLATE", DEFAULT_ANALYZE_TEMPLATE)
+    user_template = os.getenv("PROMPT_ANALYZE_JD_TEMPLATE")
 
     attempts = [
         [

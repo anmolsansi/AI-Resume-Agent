@@ -13,8 +13,8 @@ load_dotenv()
 
 client = OpenRouterClient()
 
-MISTRAL_MODEL = "mistralai/mistral-7b-instruct:free"
-GROK_MODEL = "mistralai/mistral-7b-instruct:free"  # "x-ai/grok-4.1-fast:free"
+MISTRAL_MODEL = "xiaomi/mimo-v2-flash:free"
+GROK_MODEL = "tngtech/deepseek-r1t2-chimera:free" #"mistralai/mistral-7b-instruct:free"   "x-ai/grok-4.1-fast:free"
 
 BASE_DIR = Path(__file__).resolve().parent
 STYLE_GUIDE_PATH = BASE_DIR / "style_guide.md"
@@ -131,9 +131,10 @@ def select_projects(
         {"role": "user", "content": user_prompt},
     ]
 
-    raw = client.chat(MISTRAL_MODEL, messages, temperature=0.2, max_tokens=900)
+    raw = client.chat(MISTRAL_MODEL, messages, temperature=0.2, max_tokens=100000)
     clean = _strip_markdown_fences(raw)
     try:
+        clean = clean.replace('\r', '').replace('\t', ' ')
         parsed = json.loads(clean)
     except json.JSONDecodeError:
         return {"selected_project_ids": [], "reasons": [], "raw": raw}
@@ -186,61 +187,75 @@ def rewrite_resume(
     guidance += (
         "\nEnsure the final resume highlights the selected projects explicitly and keeps all facts truthful."
     )
-
+    msg_content = user_template.format(
+                style_text=style_text,
+                jd_analysis=jd_analysis + guidance,
+                base_resume=base_resume,
+            )
     messages = [
         {
             "role": "system",
             "content": (
-                "You rewrite resumes to better match a job. "
+                "You rewrite resumes to better match a job description. "
                 "You follow the provided writing style but never invent fake experience."
             ),
         },
         {
             "role": "user",
-            "content": user_template.format(
-                style_text=style_text,
-                jd_analysis=jd_analysis + guidance,
-                base_resume=base_resume,
-            ),
+            "content": msg_content,
         },
     ]
-    return client.chat(MISTRAL_MODEL, messages, temperature=0.3, max_tokens=1400)
+    res = client.chat(MISTRAL_MODEL, messages, temperature=0.3, max_tokens=100000)
+    try:
+        parsed = _strip_markdown_fences(res)
+        parsed = parsed.replace('\r', '').replace('\t', ' ')
+        return json.loads(parsed)
+    except Exception as err:
+        print(err)
+        return json.loads(res)
 
 def judge_resume(
     jd_text: str,
     new_resume: str,
     selected_projects: List[Dict[str, Any]],
     project_count: int,
+    previous_agent_output: str
 ) -> dict:
-    user_template = os.getenv("PROMPT_JUDGE_TEMPLATE")
-    project_names = _project_names_list(selected_projects)
-    project_guidance = (
-        "\n\nProjects that MUST appear (and no others): "
-        f"{project_names or 'None provided.'}\n"
-        "Add a boolean field project_selection_issue: true if the resume chose the wrong projects, else false."
-    )
-    messages = [
-        {
-            "role": "system",
-            "content": "You are a strict recruiter. You rate resume fit and give clear feedback."
-        },
-        {
-            "role": "user",
-            "content": user_template.format(
-                jd_text=jd_text,
-                new_resume=new_resume,
-            ) + project_guidance,
-        },
-    ]
-    raw = client.chat(GROK_MODEL, messages, temperature=0.1, max_tokens=600)
-    clean = _strip_markdown_fences(raw)
     try:
-        parsed = json.loads(clean)
-    except json.JSONDecodeError:
-        parsed = {
-            "score": 0,
-            "summary": "Could not parse JSON",
-            "improvements": [raw],
-        }
-    parsed.setdefault("project_selection_issue", False)
-    return parsed
+        user_template = os.getenv("PROMPT_JUDGE_TEMPLATE")
+        msg_content = user_template.format(
+                    jd_text=jd_text,
+                    new_resume=new_resume,
+                )
+        project_names = _project_names_list(selected_projects)
+        project_guidance = (
+            "\n\nProjects that MUST appear (and no others): "
+            f"{project_names or 'None provided.'}\n"
+            "Add a boolean field project_selection_issue: true if the resume chose the wrong projects, else false."
+        )
+        messages = [
+            {
+                "role": "system",
+                "content": "You are a strict recruiter. You rate resume fit and give clear feedback."
+            },
+            {
+                "role": "user",
+                "content":  msg_content + project_guidance + "\n\n Previous agent response = " + previous_agent_output,
+            },
+        ]
+        raw = client.chat(GROK_MODEL, messages, temperature=0.1, max_tokens=100000)
+        clean = _strip_markdown_fences(raw)
+        try:
+            clean = clean.replace('\r', '').replace('\t', ' ')
+            parsed = json.loads(clean)
+        except json.JSONDecodeError:
+            parsed = {
+                "score": 0,
+                "summary": "Could not parse JSON",
+                "improvements": [raw],
+            }
+        parsed.setdefault("project_selection_issue", False)
+        return parsed
+    except Exception as e:
+        print(e)
+        return None
